@@ -1,0 +1,63 @@
+# Kører automatisk, hver gang der pushes til main-branchen
+trigger:
+  branches:
+    include:
+      - main
+
+stages:
+  # ---------- FASE 1: BYG OG TEST ----------
+  - stage: Build
+    displayName: 'Byg og test'
+    jobs:
+      - job: BuildAndTest
+        pool:
+          vmImage: 'ubuntu-latest'   # kører på en gratis, midlertidig Microsoft-server
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.11'
+            displayName: 'Sæt Python-version'
+
+          - script: |
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+            displayName: 'Installer afhængigheder'
+
+          - script: |
+              pip install flake8
+              flake8 monitor.py --max-line-length=120 --extend-ignore=W291,W292,W293
+            displayName: 'Lint koden'   # tjekker for stavefejl og dårlig kodestil
+
+          - script: |
+              python -m py_compile monitor.py
+            displayName: 'Verificér at koden kompilerer'   # fanger simple syntaksfejl
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(System.DefaultWorkingDirectory)'
+              ArtifactName: 'monitor-app'
+            displayName: 'Publicér build-artifact'   # pakker filerne, så Deploy-fasen kan hente dem
+
+  # ---------- FASE 2: UDRULNING ----------
+  - stage: Deploy
+    displayName: 'Udrul koden'
+    dependsOn: Build
+    condition: succeeded()   # kører kun, hvis Build-fasen lykkedes
+    jobs:
+      - deployment: DeployMonitor
+        displayName: 'Deploy til hjemmemaskine'
+        environment: 'hjemme-server'   # opret denne under Pipelines -> Environments
+        pool:
+          name: 'Default'              # din selv-hostede agent-pool
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    mkdir -p ~/overvaagning
+                    cp $(Pipeline.Workspace)/monitor-app/monitor.py ~/overvaagning/monitor.py
+                    cp $(Pipeline.Workspace)/monitor-app/config.yaml ~/overvaagning/config.yaml
+                    cp $(Pipeline.Workspace)/monitor-app/requirements.txt ~/overvaagning/requirements.txt
+                    pip install -r ~/overvaagning/requirements.txt --break-system-packages
+                    sudo systemctl restart overvaagning.service
+                  displayName: 'Kopiér nye filer og genstart tjenesten'

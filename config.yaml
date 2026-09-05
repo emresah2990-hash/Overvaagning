@@ -1,0 +1,21 @@
+# Liste over hosts/services der skal overvåges
+hosts:
+  - name: "Min router"
+    address: "192.168.1.1"
+    type: "ping"
+  - name: "Min egen pc"
+    address: "192.168.1.247"
+    type: "ping"
+
+# Hvor ofte der tjekkes (i sekunder)
+check_interval_seconds: 60
+
+
+smtp:
+  enabled: true
+  server: "smtp.gmail.com"
+  port: 587
+  username: "your-email@gmail.com"
+  password: "gmaill-app-password"
+  from_address: "your-email@gmail.com"
+  to_address: "your-email@gmail.com"

@@ -1,0 +1,16 @@
+# Denne fil holder overvågningsscriptet kørende i baggrunden,
+# også efter genstart af maskinen.
+
+[Unit]
+Description=Overvaagningssystem - tjekker hosts og sender e-mail-alarm
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/vboxuser/overvaagning
+ExecStart=/usr/bin/python3 /home/vboxuser/overvaagning/monitor.py
+Restart=on-failure
+User=vboxuser
+
+[Install]
+WantedBy=multi-user.target
